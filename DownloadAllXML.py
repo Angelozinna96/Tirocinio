@@ -8,7 +8,7 @@ Created on Tue Apr 17 16:03:06 2018
 
 from ftplib import FTP
 import os
-data_search="20180419"
+data_search="20180420"
 tipologia_file='VIIRS-Image-Bands-SDR-Ellipsoid-Terrain-Corrected-Geo'
 dir_ftp=data_search+'/VIIRS-SDR/'+tipologia_file+'/NPP/'
 all_file =[]
@@ -58,18 +58,26 @@ except:
 #prelevamento info dall'xml
     
 import xml.etree.ElementTree as ET 
+id_buoni=[]
 for name in all_file:
     if name.find("xml")!=-1:
         tree = ET.parse(dir_finale+name)
         root = tree.getroot()
         #num di granuli presenti nel tar
         num_granuli=int(root.findall('TarFileCount')[0].text)
-        #creazione di una lista che conterrà i nomi dei granuli
-        nomefile=list(range(num_granuli))
         for i,dataset in enumerate(root.findall('Dataset')):
-            nomefile[i]=dataset.find('FileName').text
+            nomefile=(dataset.find('FileName').text)
             #visualizzazione orario
             ore_inizio=nomefile[i].split('_')[3][1:5]
             ore_fine=nomefile[i].split('_')[4][1:5]
-            #if ore_inizio[:3]=="112":
-            print ore_inizio, ore_fine,"id:"+name.split('.')[0].split('_')[3]
+            #ricerca per orario dei granuli
+            if ore_inizio[:2]=="12":
+                #salvataggio degli id buoni da utilizzare per scaricare i rispettivi file tar
+                id_buoni.append(name.split('.')[0].split('_')[3])
+                print ore_inizio, ore_fine   
+id_buoni=list(set(id_buoni))
+
+
+                
+                
+                
