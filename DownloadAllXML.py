@@ -85,13 +85,14 @@ tar_buoni=list(set(tar_buoni))
 i_buoni=list(set(i_buoni))
 #ricerca dei file tar da scaricare e li scarica, si puo semplificare il processo unendo questa parte a quella di sopra
 from pyftpclient import PyFTPclient
-client_ftp=PyFTPclient('ftp-npp.class.ngdc.noaa.gov',21,'','')
-client_ftp.DownloadFile(dir_ftp+tar_buoni[0],dir_finale_h5+tar_buoni[0])
-'''
+from silence_stdout import nostdout
+with nostdout():
+    print "pippo"
+    client_ftp=PyFTPclient('ftp-npp.class.ngdc.noaa.gov',21,'','')
+    '''
 for tar in tar_buoni:
-    new_fileh5=open(dir_finale_h5+tar,'wb')
-    #ftp.retrbinary('RETR '+name,new_fileh5.write)
-    new_fileh5.close()
+    client_ftp.DownloadFile(dir_ftp+tar,dir_finale_h5+tar)
     print "download completato"
- '''
+    '''
+
           
