@@ -47,7 +47,7 @@ dir_finale_h5+='/'
 
 #ricerca e download dei file xml
 
-util.downloadXMLs(all_file,dir_finale,ftp)
+#util.downloadXMLs(all_file,dir_finale,ftp)
 
 
 #prelevamento info dall'xml
@@ -90,18 +90,23 @@ h5_buoni=[]
 for itar in tar_buoni:
     tar=tarfile.open(name=dir_finale_h5+itar, mode='r', fileobj=None, bufsize=10240)
     lista=tar.getnames()
+    print lista
     for gz in gz_buoni:
         if gz in lista:
             print "gz:",gz, "\n è presente nel tar:",itar
             tar.extract(tar.getmember(gz),dir_finale_h5)
             print "estrazione file gz dal file tar completata"
             import subprocess
-            #estrazione gz da bash (non funziona)
+            #estrazione gz da bash 
+            print dir_finale_h5+gz
             bash="gunzip "+dir_finale_h5+gz
             process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
             #output, error = process.communicate()
             print "estrazione file gz completata"
-           
+            
+            #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
+            import time
+            time.sleep(2.5) 
             
             #apertura e ricerca dei gz che corrispondono a quelli dell'etna
             import h5py
@@ -132,7 +137,7 @@ for itar in tar_buoni:
             else:
                 print "lat non corrisponde"
             
-            
+           
         
         
 
