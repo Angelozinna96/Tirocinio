@@ -47,6 +47,7 @@ def checkH5File(dir_finale_h5,range_utile,latitudine,longitudine,gz,h5_buoni):
 
     
     #controlla se la latitudine è compresa tra i valori di inizio e fine della mat
+    print "lat1=",matrice_lat[0][shift]," lat2=",matrice_lat[-1][-shift]
     if(matrice_lat[0][shift] < latitudine < matrice_lat[-1][-shift] or matrice_lat[-1][-shift] < latitudine < matrice_lat[0][shift]):
         matrice_long=f[all_data][data]['Longitude']
         print "latitudine corrisponde"

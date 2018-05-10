@@ -12,10 +12,10 @@ latitudine=37.755
 longitudine=15
 ftp_ip='ftp-npp.class.ngdc.noaa.gov'
 range_utile=1/float(3)
-data_search="20180421"
+data_search="20180420"
 tipologia_file='VIIRS-Image-Bands-SDR-Ellipsoid-Terrain-Corrected-Geo'
 dir_ftp=data_search+'/VIIRS-SDR/'+tipologia_file+'/NPP/'
-all_file_xml =[]
+all_file =[]
 
 
 #connessione ftp
@@ -23,7 +23,7 @@ ftp=FTP(ftp_ip)
 ftp.login()
 ftp.cwd(dir_ftp)
 #download della lista dei file nella directory dir_ftp
-res_ftp=ftp.retrlines('NLST',all_file_xml.append)
+res_ftp=ftp.retrlines('NLST',all_file.append)
 #print res_ftp
 print "connessione al server ftp riuscita!"
 res_ftp=res_ftp.split(' ')
@@ -47,7 +47,7 @@ dir_finale_h5+='/'
 
 #ricerca e download dei file xml
 
-#util.downloadXMLs(all_file_xml,dir_finale,ftp)
+#util.downloadXMLs(all_file,dir_finale,ftp)
 
 
 #prelevamento info dall'xml
@@ -57,7 +57,7 @@ tar_buoni=[]
 i_buoni=[]
 gz_buoni=[]
 print "date utili:"
-for i,name in enumerate(all_file_xml):
+for i,name in enumerate(all_file):
     if name.find("xml")!=-1:
         tree = ET.parse(dir_finale+name)
         root = tree.getroot()
@@ -82,7 +82,7 @@ tar_buoni=list(set(tar_buoni))
 i_buoni=list(set(i_buoni))
 #download file tar(non funziona su mac e windows credo)
 
-#util.downloadTars(ftp_ip,tar_buoni,dir_ftp,dir_finale_h5)
+util.downloadTars(ftp_ip,tar_buoni,dir_ftp,dir_finale_h5)
 
 #apertura tar file e ricerca dei gz da usare
 import tarfile
@@ -95,7 +95,7 @@ for itar in tar_buoni:
     except:
         print "tar file non disponibile o corrotto,scaricarlo di nuovo!"
         sys.exit(0)
-    print lista
+    #print lista
     
     for gz in gz_buoni:
         if gz in lista:
