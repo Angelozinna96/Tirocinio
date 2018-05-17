@@ -110,7 +110,6 @@ class EstrazioneH5:
         #calcolo file xml da scaricare
         num_el_xml=int(res_ftp[1])/2
         print "num_file xml=%d"% num_el_xml
-        
     def createDirs(self):
         import os
         #creazione cartelle della data , xml e h5
@@ -183,6 +182,7 @@ class EstrazioneH5:
                         print "ora inizio:",ore_inizio,"- ora fine:",ore_fine          
         #eliminazione degli id ripetuti
         i_buoni=list(set(i_buoni))
+   
         
     
     
