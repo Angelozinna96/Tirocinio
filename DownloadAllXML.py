@@ -82,7 +82,7 @@ tar_buoni=list(set(tar_buoni))
 i_buoni=list(set(i_buoni))
 #download file tar(non funziona su mac e windows credo)
 
-util.downloadTars(ftp_ip,tar_buoni,dir_ftp,dir_finale_h5)
+#util.downloadTars(ftp_ip,tar_buoni,dir_ftp,dir_finale_h5)
 
 #apertura tar file e ricerca dei gz da usare
 import tarfile

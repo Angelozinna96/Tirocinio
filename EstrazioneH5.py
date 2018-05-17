@@ -56,9 +56,9 @@ class EstrazioneH5:
     #-----FUNZIONI GET-----
     
     def getTarsPotenzialmenteBuoni(self):
-        return self.tar_buoni
+        return self.tar_buoni.keys()
     def getGZPotenzialmenteBuoni(self):
-        return self.gz_buoni
+        return self.tar_buoni.values()[0]
     
     #-----PROCEDURE PRIVATE-----
     
@@ -149,9 +149,9 @@ class EstrazioneH5:
                 client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
         print "download completato del tar numero:",i+1
 
-    def extractTarAndGzFromXMLByHour(self,data):
-        tar_creato=0
-        if len(data)>4 or len(data)<3:
+    def extractTarAndGzFromXMLByHour(self,orario):
+        tar_creato=False
+        if len(orario)>4 or len(orario)<3:
             print "formato della data troppo corto o lungo, esempio di orario 12:40 = 1240(orario preciso) oppure 124(orario non preciso)"
             return
         #prelevamento info dall'xml
@@ -164,25 +164,67 @@ class EstrazioneH5:
                 root = tree.getroot()
                 #num di granuli presenti nel tar
                 num_granuli=int(root.findall('TarFileCount')[0].text)
-                tar_creato=0
+                tar_creato=False
                 for dataset in root.findall('Dataset'):
                     nomefile=(dataset.find('FileName').text)
                     #visualizzazione orario
                     ore_inizio=nomefile.split('_')[3][1:5]
                     ore_fine=nomefile.split('_')[4][1:5]
                     #ricerca per orario dei granuli
-                    if ore_inizio[:len(data)]==data:
-                        if tar_creato==0:
-                            self.tar_buoni[name.split(".manifest")[0]]=[]
-                            tar_creato=1
+                    if ore_inizio[:len(orario)]==orario:
+                        if tar_creato==False and name.split(".manifest")[0] not in self.tar_buoni.keys():
+                            self.tar_buoni[name.split(".manifest")[0]]={}
+                            tar_creato=True
                         #salvataggio degli id buoni da utilizzare per scaricare i rispettivi file tar
                         #id_buoni.append(name.split('.')[0].split('_')[3])                
-                        self.tar_buoni[name.split(".manifest")[0]].append(nomefile+".gz")
+                        self.tar_buoni[name.split(".manifest")[0]][nomefile+".gz"]="Not yet"
                         i_buoni.append(i)
                         print "ora inizio:",ore_inizio,"- ora fine:",ore_fine          
         #eliminazione degli id ripetuti
         i_buoni=list(set(i_buoni))
-   
+    
+
+    def checkAllGZGoodOfTars(self):
+        import tarfile as t
+        import sys
+        for tar in self.tar_buoni.keys():
+            
+            try:
+                print "poooooooo"
+                tar_file=t.open(name=self.dir_finale_h5+tar, mode='r', fileobj=None, bufsize=10240)
+                
+                #riga seguente inutile
+                lista=tar_file.getnames()
+                print lista
+            except:
+                print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
+                continue
+                
+            for gz in self.tar_buoni[tar].keys():
+                if self.tar_buoni[tar][gz]=="Not yet": 
+
+                    tar_file.extract(tar.getmember(gz),self.dir_finale_h5)
+                    print "estrazione file gz dal file tar completata"
+                    import subprocess
+                    #estrazione gz da bash 
+                    print self.dir_finale_h5+gz
+                    bash="gunzip "+self.dir_finale_h5+gz
+                    process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
+                    #output, error = process.communicate()
+                    print "estrazione file gz completata"
+                    
+                    #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
+                    import time
+                    time.sleep(2.5) 
+                    
+                    #apertura e ricerca dei gz che corrispondono a quelli dell'etna
+                    #h5_buoni.append(util.checkH5File(dir_finale_h5,range_utile,latitudine,longitudine,gz,h5_buoni))
+
+        
+                    
+                    
+                    
+                
         
     
     
