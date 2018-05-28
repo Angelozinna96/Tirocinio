@@ -7,7 +7,7 @@ Created on Thu May 10 11:58:17 2018
 """
 
 from EstrazioneH5 import EstrazioneH5
-_data="20180420"
+_data="20180527"
 orario="120"
 obj=EstrazioneH5(data=_data,rang=1/float(3),dir_base='/Users/angelozinna/Desktop/university/3anno/tirocinio/dati/')
 obj.createDirs()
@@ -18,3 +18,4 @@ print "tar potenzialmente buoni:", obj.getTarsPotenzialmenteBuoni()
 print "gz potenzialmente buoni:", obj.getGZPotenzialmenteBuoni()
 #obj.downloadTars() 
 obj.checkAllGZGoodOfTars()
+print "gz potenzialmente buoni:", obj.getGZPotenzialmenteBuoni()

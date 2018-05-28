@@ -69,7 +69,7 @@ class EstrazioneH5:
             f = h5py.File(self.dir_finale_h5+gz[:-3], 'r') 
         except:
             print "file h5 non trovato o dannegiato"
-            return
+            return None
         #si seleziona all_data tra le key
         all_data= list(f.keys())[0]
         #si seleziona la prima voce tra le key
@@ -89,11 +89,12 @@ class EstrazioneH5:
             #controlla se la longitudine è compresa tra i valori 
             if(matrice_long[0][shift] < self.longitudine < matrice_long[-1][-shift] or matrice_long[-1][-shift] < self.longitudine < matrice_long[0][shift]):
                 print "longitudine corrisponde"
-                self.h5_buoni=gz[:-3]
+                return gz[:-3]
             else:
                 print "long non corrisponde"
         else:
             print "lat non corrisponde"
+        return None
                 
     #-----PROCEDURE PUBBLICHE-----
     def connectFTP(self):
@@ -110,6 +111,7 @@ class EstrazioneH5:
         #calcolo file xml da scaricare
         num_el_xml=int(res_ftp[1])/2
         print "num_file xml=%d"% num_el_xml
+        
     def createDirs(self):
         import os
         #creazione cartelle della data , xml e h5
@@ -152,7 +154,7 @@ class EstrazioneH5:
     def extractTarAndGzFromXMLByHour(self,orario):
         tar_creato=False
         if len(orario)>4 or len(orario)<3:
-            print "formato della data troppo corto o lungo, esempio di orario 12:40 = 1240(orario preciso) oppure 124(orario non preciso)"
+            print "formato della data troppo corto o lungo, esempio di orario 12:40 = 1240(orario preciso) oppure 124(orario non preciso, prenderà tutti quelli compresi dalle 12:40 alle 12:49)"
             return
         #prelevamento info dall'xml
         import xml.etree.ElementTree as ET 
@@ -175,7 +177,7 @@ class EstrazioneH5:
                         if tar_creato==False and name.split(".manifest")[0] not in self.tar_buoni.keys():
                             self.tar_buoni[name.split(".manifest")[0]]={}
                             tar_creato=True
-                        #salvataggio degli id buoni da utilizzare per scaricare i rispettivi file tar
+                        #salvataggio degli id buoni da utilizzare per scaricare i rispettivi file tar (non dovrebbe servire, basta il nome)
                         #id_buoni.append(name.split('.')[0].split('_')[3])                
                         self.tar_buoni[name.split(".manifest")[0]][nomefile+".gz"]="Not yet"
                         i_buoni.append(i)
@@ -190,12 +192,13 @@ class EstrazioneH5:
         for tar in self.tar_buoni.keys():
             
             try:
-                print "poooooooo"
+
+                open(self.dir_finale_h5+tar, 'r')
                 tar_file=t.open(name=self.dir_finale_h5+tar, mode='r', fileobj=None, bufsize=10240)
                 
                 #riga seguente inutile
-                lista=tar_file.getnames()
-                print lista
+                #lista=tar_file.getnames()
+                #print lista
             except:
                 print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
                 continue
@@ -203,7 +206,7 @@ class EstrazioneH5:
             for gz in self.tar_buoni[tar].keys():
                 if self.tar_buoni[tar][gz]=="Not yet": 
 
-                    tar_file.extract(tar.getmember(gz),self.dir_finale_h5)
+                    tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
                     print "estrazione file gz dal file tar completata"
                     import subprocess
                     #estrazione gz da bash 
@@ -218,7 +221,11 @@ class EstrazioneH5:
                     time.sleep(2.5) 
                     
                     #apertura e ricerca dei gz che corrispondono a quelli dell'etna
-                    #h5_buoni.append(util.checkH5File(dir_finale_h5,range_utile,latitudine,longitudine,gz,h5_buoni))
+                    res=self.__checkH5File(gz)
+                    if(res):
+                        self.tar_buoni[tar][gz]="Good"
+                    else:
+                        self.tar_buoni[tar][gz]="Not Good"
 
         
                     
