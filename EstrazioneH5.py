@@ -19,6 +19,7 @@ class EstrazioneH5:
     dir_base=""
     dir_finale=""
     dir_finale_h5=""
+    range_orario=20
     ftp=None
     tar_buoni={}
     gz_buoni=[]
@@ -82,9 +83,12 @@ class EstrazioneH5:
         shift=int(matrice_lat.shape[1]*self.range_utile)
         print "shift dal quale cominciare a prendere i dati:",shift
         print "lat1=",matrice_lat[0][shift]," lat2=",matrice_lat[-1][-shift]
+        #da mettere dentro l if dopo il debug
+        matrice_long=f[all_data][data]['Longitude']
+        print "long1=",matrice_long[0][shift]," long2=",matrice_long[-1][-shift]
         #controlla se la latitudine è compresa tra i valori di inizio e fine della mat
         if(matrice_lat[0][shift] < self.latitudine < matrice_lat[-1][-shift] or matrice_lat[-1][-shift] < self.latitudine < matrice_lat[0][shift]):
-            matrice_long=f[all_data][data]['Longitude']
+            
             print "latitudine corrisponde"
             #controlla se la longitudine è compresa tra i valori 
             if(matrice_long[0][shift] < self.longitudine < matrice_long[-1][-shift] or matrice_long[-1][-shift] < self.longitudine < matrice_long[0][shift]):
@@ -94,7 +98,7 @@ class EstrazioneH5:
                 print "long non corrisponde"
         else:
             print "lat non corrisponde"
-        return None
+        return ((matrice_lat[0][shift],matrice_lat[-1][-shift]),(matrice_long[0][shift],matrice_long[-1][-shift]))
                 
     #-----PROCEDURE PUBBLICHE-----
     def connectFTP(self):
@@ -125,9 +129,10 @@ class EstrazioneH5:
         self.dir_finale_h5+='/'
         
     def downloadXMLs(self):
+        import os
         try:
             for name in self.all_file:
-                if name.find("xml")!=-1:
+                if name.find("xml")!=-1 and not os.path.exists(self.dir_finale+name):
                     new_file=open(self.dir_finale+name, 'wb')
                     self.ftp.retrbinary('RETR '+name, new_file.write)
                     new_file.close()
@@ -199,33 +204,69 @@ class EstrazioneH5:
                 #riga seguente inutile
                 #lista=tar_file.getnames()
                 #print lista
+           
+                
+                for gz in self.tar_buoni[tar].keys():
+                    if self.tar_buoni[tar][gz]=="Not yet": 
+                        print "tar not good=",tar
+                        tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
+                        print "estrazione file gz dal file tar completata"
+                        import subprocess
+                        #estrazione gz da bash 
+                        print self.dir_finale_h5+gz
+                        bash="gunzip "+self.dir_finale_h5+gz
+                        process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
+                        #output, error = process.communicate()
+                        print "estrazione file gz completata"
+                        
+                        #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
+                        import time
+                        time.sleep(2.5) 
+                        
+                        #apertura e ricerca dei gz che corrispondono a quelli dell'etna
+                        res=self.__checkH5File(gz)
+                        if type(res)==str:
+                            self.tar_buoni[tar][gz]="Good"
+                        else:
+                            self.tar_buoni[tar][gz]="Not Good"
             except:
                 print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
                 continue
-                
-            for gz in self.tar_buoni[tar].keys():
-                if self.tar_buoni[tar][gz]=="Not yet": 
-
-                    tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
-                    print "estrazione file gz dal file tar completata"
-                    import subprocess
-                    #estrazione gz da bash 
-                    print self.dir_finale_h5+gz
-                    bash="gunzip "+self.dir_finale_h5+gz
-                    process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
-                    #output, error = process.communicate()
-                    print "estrazione file gz completata"
-                    
-                    #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
-                    import time
-                    time.sleep(2.5) 
-                    
-                    #apertura e ricerca dei gz che corrispondono a quelli dell'etna
-                    res=self.__checkH5File(gz)
-                    if(res):
-                        self.tar_buoni[tar][gz]="Good"
-                    else:
-                        self.tar_buoni[tar][gz]="Not Good"
+                        
+    def findGoodH5File(self):
+        goodH5=[];
+        for tar in self.tar_buoni.keys():
+            for gz in  self.tar_buoni[tar]:
+                if self.tar_buoni[tar][gz]=="Good":
+                    goodH5.append(gz[:-3])
+        if len(goodH5) > 0:
+            return goodH5
+        else:
+            return None
+        
+    def writeInFileGoodH5(self,h5):
+        import os
+        
+        str=""
+        if not os.path.exists(self.dir_finale_h5+"goodH5"): 
+            f=open(self.dir_finale_h5+"goodH5",'w')
+            for i in h5:
+                str+=i+"/n"
+            f.write(str)
+            f.close()
+        else: 
+            f=open(self.dir_finale_h5+"goodH5",'r')
+            contenuto=f.read()
+            f.close()
+            for i in h5:
+                if contenuto.find(i)==-1:
+                    str+=i+"\n"
+            if len(str)>0:
+                f=open(self.dir_finale_h5+"goodH5",'a')            
+                f.write(str)
+                f.close()
+            
+       
 
         
                     
