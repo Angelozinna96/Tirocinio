@@ -21,7 +21,7 @@ class EstrazioneH5:
     dir_finale_h5=""
     range_orario=20
     ftp=None
-    tar_buoni={}
+    tar_salvati={}
     gz_buoni=[]
     h5_buoni=[]
     
@@ -57,9 +57,9 @@ class EstrazioneH5:
     #-----FUNZIONI GET-----
     
     def getTarsPotenzialmenteBuoni(self):
-        return self.tar_buoni.keys()
+        return self.tar_salvati.keys()
     def getGZPotenzialmenteBuoni(self):
-        return self.tar_buoni.values()[0]
+        return self.tar_salvati.values()
     
     #-----PROCEDURE PRIVATE-----
     
@@ -142,21 +142,30 @@ class EstrazioneH5:
         except:
             print('Error during download xml from FTP server')
         print "download dei file xml completata"
-        
-    def downloadTars(self): # da rendere paralleli il download dei tar
+    def downloadTar(self,tar):
         from pyftpclient import PyFTPclient
         from silence_stdout import nostdout
-        if self.tar_buoni.keys() ==[]:
-            print "nessun tar da scaricare , eseguire prima la funzione extractTarAndGzFromXMLByHour per trovare dei tar"
+        with nostdout():
+            client_ftp=PyFTPclient(self.ftp_ip,21,'','')
+        with nostdout():
+            client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
+        print "download completato del tar "
+    def downloadTars(self): # da rendere paralleli il download dei tar
+        import os
+        from pyftpclient import PyFTPclient
+        from silence_stdout import nostdout
+        if self.tar_salvati.keys() ==[]:
+            print "nessun tar da scaricare , eseguire prima la funzione extractTarAndGzInfoFromXMLByHour per trovare dei tar"
             return
         with nostdout():
             client_ftp=PyFTPclient(self.ftp_ip,21,'','')
-        for i,tar in enumerate(self.tar_buoni.keys()):
-            with nostdout():
-                client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
+        for i,tar in enumerate(self.tar_salvati.keys()):
+            if not os.path.exists(self.dir_finale_h5+tar):
+                with nostdout():
+                    client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
         print "download completato del tar numero:",i+1
 
-    def extractTarAndGzFromXMLByHour(self,orario):
+    def extractTarAndGzInfoFromXMLByHour(self,orario):
         tar_creato=False
         if len(orario)>4 or len(orario)<3:
             print "formato della data troppo corto o lungo, esempio di orario 12:40 = 1240(orario preciso) oppure 124(orario non preciso, prenderà tutti quelli compresi dalle 12:40 alle 12:49)"
@@ -179,22 +188,22 @@ class EstrazioneH5:
                     ore_fine=nomefile.split('_')[4][1:5]
                     #ricerca per orario dei granuli
                     if ore_inizio[:len(orario)]==orario:
-                        if tar_creato==False and name.split(".manifest")[0] not in self.tar_buoni.keys():
-                            self.tar_buoni[name.split(".manifest")[0]]={}
+                        if tar_creato==False and name.split(".manifest")[0] not in self.tar_salvati.keys():
+                            self.tar_salvati[name.split(".manifest")[0]]={}
                             tar_creato=True
                         #salvataggio degli id buoni da utilizzare per scaricare i rispettivi file tar (non dovrebbe servire, basta il nome)
                         #id_buoni.append(name.split('.')[0].split('_')[3])                
-                        self.tar_buoni[name.split(".manifest")[0]][nomefile+".gz"]="Not yet"
+                        self.tar_salvati[name.split(".manifest")[0]][nomefile+".gz"]="Not yet"
                         i_buoni.append(i)
                         print "ora inizio:",ore_inizio,"- ora fine:",ore_fine          
         #eliminazione degli id ripetuti
         i_buoni=list(set(i_buoni))
     
 
-    def checkAllGZGoodOfTars(self):
+    def checkAllPotGoodGZFromTars(self):
         import tarfile as t
         import sys
-        for tar in self.tar_buoni.keys():
+        for tar in self.tar_salvati.keys():
             
             try:
 
@@ -206,9 +215,8 @@ class EstrazioneH5:
                 #print lista
            
                 
-                for gz in self.tar_buoni[tar].keys():
-                    if self.tar_buoni[tar][gz]=="Not yet": 
-                        print "tar not good=",tar
+                for gz in self.tar_salvati[tar].keys():
+                    if self.tar_salvati[tar][gz]=="Not yet": 
                         tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
                         print "estrazione file gz dal file tar completata"
                         import subprocess
@@ -226,18 +234,53 @@ class EstrazioneH5:
                         #apertura e ricerca dei gz che corrispondono a quelli dell'etna
                         res=self.__checkH5File(gz)
                         if type(res)==str:
-                            self.tar_buoni[tar][gz]="Good"
+                            self.tar_salvati[tar][gz]="Good"
+                            res=None
+                            return res
                         else:
-                            self.tar_buoni[tar][gz]="Not Good"
+                            self.tar_salvati[tar][gz]="Not Good"
+                        
             except:
                 print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
                 continue
-                        
-    def findGoodH5File(self):
+    def checkPotGoodGZFromTars(self,tar,gz):
+        import tarfile as t
+        import sys 
+        try:
+            open(self.dir_finale_h5+tar, 'r')
+            tar_file=t.open(name=self.dir_finale_h5+tar, mode='r', fileobj=None, bufsize=10240)
+            tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
+            print "estrazione file gz dal file tar completata"
+            import subprocess
+            #estrazione gz da bash 
+            print self.dir_finale_h5+gz
+            bash="gunzip "+self.dir_finale_h5+gz
+            process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
+            #output, error = process.communicate()
+            print "estrazione file gz completata"
+            
+            #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
+            import time
+            time.sleep(2.5) 
+            
+            #apertura e ricerca dei gz che corrispondono a quelli dell'etna
+            res=self.__checkH5File(gz)
+            #se ha trovato l'h5
+            if type(res)==str:
+                self.tar_salvati[tar][gz]="Good"
+            else:
+                self.tar_salvati[tar][gz]="Not Good"
+            return res
+                    
+        except:
+            print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
+ 
+           
+    def findGoodH5InDict(self):
         goodH5=[];
-        for tar in self.tar_buoni.keys():
-            for gz in  self.tar_buoni[tar]:
-                if self.tar_buoni[tar][gz]=="Good":
+        for tar in self.tar_salvati.keys():
+            for gz in  self.tar_salvati[tar]:
+                if self.tar_salvati[tar][gz]=="Good":
                     goodH5.append(gz[:-3])
         if len(goodH5) > 0:
             return goodH5
@@ -265,7 +308,28 @@ class EstrazioneH5:
                 f=open(self.dir_finale_h5+"goodH5",'a')            
                 f.write(str)
                 f.close()
-            
+    '''
+    def findRecursiveGoodGZ(self,orario):
+        self.extractTarAndGzInfoFromXMLByHour(orario)
+        #self.downloadTars() 
+        for tar in self.tar_salvati.keys():
+            gz=None
+            for gzi in self.tar_salvati[tar].keys():
+                    if gzi == "Not yet":
+                        gz=gzi
+                        break
+            res=self.checkPotGoodGZFromTars(tar,gz)
+            if type(res)==str:
+                print "trovato"
+                h5=self.findGoodH5InDict();
+                self.writeInFileGoodH5(h5)
+                return res
+             ora_inizio=gz.split('_')[3][1:5]
+             ora_fine=gz.split('_')[4][1:5]
+             if(ora_fine)
+            self.findRecursiveGoodGZ()
+    
+    '''   
        
 
         

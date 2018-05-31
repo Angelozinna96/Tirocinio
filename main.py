@@ -13,12 +13,12 @@ obj=EstrazioneH5(data=_data,rang=1/float(3),dir_base='/Users/angelozinna/Desktop
 obj.createDirs()
 obj.connectFTP()
 obj.downloadXMLs()
-obj.extractTarAndGzFromXMLByHour(orario)
+obj.extractTarAndGzInfoFromXMLByHour(orario)
 print "tar potenzialmente buoni:", obj.getTarsPotenzialmenteBuoni()
 print "gz potenzialmente buoni:", obj.getGZPotenzialmenteBuoni()
 #obj.downloadTars() 
-obj.checkAllGZGoodOfTars()
+obj.checkAllPotGoodGZFromTars()
 print "gz potenzialmente buoni:", obj.getGZPotenzialmenteBuoni()
-h5=obj.findGoodH5File();
+h5=obj.findGoodH5InDict();
 if(h5):
     obj.writeInFileGoodH5(h5)
