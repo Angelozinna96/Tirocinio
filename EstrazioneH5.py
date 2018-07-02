@@ -80,12 +80,13 @@ class EstrazioneH5:
         matrice_long=[[]]
         
         #calcolo range utile della mat da guardare
-        shift=int(matrice_lat.shape[1]*self.range_utile)
+        shift=int(matrice_lat.shape[1]*self.range_utile) +1
+        
         print "shift dal quale cominciare a prendere i dati:",shift
         print "lat1=",matrice_lat[0][shift]," lat2=",matrice_lat[-1][-shift]
         #da mettere dentro l if dopo il debug
         matrice_long=f[all_data][data]['Longitude']
-        print "long1=",matrice_long[0][shift]," long2=",matrice_long[-1][-shift]
+        print "long1=",matrice_long[0][shift]," long2=",matrice_long[0][-shift]
         #controlla se la latitudine è compresa tra i valori di inizio e fine della mat
         if(matrice_lat[0][shift] < self.latitudine < matrice_lat[-1][-shift] or matrice_lat[-1][-shift] < self.latitudine < matrice_lat[0][shift]):
             
@@ -142,6 +143,7 @@ class EstrazioneH5:
         except:
             print('Error during download xml from FTP server')
         print "download dei file xml completata"
+    #download a single tar
     def downloadTar(self,tar):
         from pyftpclient import PyFTPclient
         from silence_stdout import nostdout
