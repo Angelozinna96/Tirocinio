@@ -26,7 +26,7 @@ class EstrazioneH5:
     h5_buoni=[]
     
     
-    def __init__(self,data,rang=1/float(3),tip='VIIRS-Image-Bands-SDR-Ellipsoid-Terrain-Corrected-Geo',ip='ftp-npp.class.ngdc.noaa.gov',dir_base="~/Desktop/",lat=37.755,lon=15):
+    def __init__(self,data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',ip='ftp-npp.bou.class.noaa.gov',dir_base="~/Desktop/",lat=37.755,lon=15):
         self.data_search=data
         self.ftp_ip=ip
         self.range_utile=rang
@@ -92,14 +92,14 @@ class EstrazioneH5:
             
             print "latitudine corrisponde"
             #controlla se la longitudine è compresa tra i valori 
-            if(matrice_long[0][shift] < self.longitudine < matrice_long[-1][-shift] or matrice_long[-1][-shift] < self.longitudine < matrice_long[0][shift]):
+            if(matrice_long[0][shift] < self.longitudine < matrice_long[0][-shift] or matrice_long[0][-shift] < self.longitudine < matrice_long[0][shift]):
                 print "longitudine corrisponde"
                 return gz[:-3]
             else:
-                print "long non corrisponde"
+                print "long non corrisponde, provare ad allargare il range possibile!"
         else:
             print "lat non corrisponde"
-        return ((matrice_lat[0][shift],matrice_lat[-1][-shift]),(matrice_long[0][shift],matrice_long[-1][-shift]))
+        return ((matrice_lat[0][shift],matrice_lat[-1][-shift]),(matrice_long[0][shift],matrice_long[0][-shift]))
                 
     #-----PROCEDURE PUBBLICHE-----
     def connectFTP(self):
@@ -143,30 +143,6 @@ class EstrazioneH5:
         except:
             print('Error during download xml from FTP server')
         print "download dei file xml completata"
-    #download a single tar
-    def downloadTar(self,tar):
-        from pyftpclient import PyFTPclient
-        from silence_stdout import nostdout
-        with nostdout():
-            client_ftp=PyFTPclient(self.ftp_ip,21,'','')
-        with nostdout():
-            client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
-        print "download completato del tar "
-    def downloadTars(self): # da rendere paralleli il download dei tar
-        import os
-        from pyftpclient import PyFTPclient
-        from silence_stdout import nostdout
-        if self.tar_salvati.keys() ==[]:
-            print "nessun tar da scaricare , eseguire prima la funzione extractTarAndGzInfoFromXMLByHour per trovare dei tar"
-            return
-        with nostdout():
-            client_ftp=PyFTPclient(self.ftp_ip,21,'','')
-        for i,tar in enumerate(self.tar_salvati.keys()):
-            if not os.path.exists(self.dir_finale_h5+tar):
-                with nostdout():
-                    client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
-        print "download completato del tar numero:",i+1
-
     def extractTarAndGzInfoFromXMLByHour(self,orario):
         tar_creato=False
         if len(orario)>4 or len(orario)<3:
@@ -200,7 +176,35 @@ class EstrazioneH5:
                         print "ora inizio:",ore_inizio,"- ora fine:",ore_fine          
         #eliminazione degli id ripetuti
         i_buoni=list(set(i_buoni))
-    
+        
+    #download di un singolo tar
+    def downloadTar(self,tar):
+        from pyftpclient import PyFTPclient
+        from silence_stdout import nostdout
+        print "download in corso..."
+        with nostdout():
+            client_ftp=PyFTPclient(self.ftp_ip,21,'','')
+        with nostdout():
+            client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
+        print "download completato del tar "
+    def downloadTars(self): # da rendere paralleli il download dei tar
+        import os
+        from pyftpclient import PyFTPclient
+        from silence_stdout import nostdout
+        print "download in corso..."
+        if self.tar_salvati.keys() ==[]:
+            print "nessun tar da scaricare , eseguire prima la funzione extractTarAndGzInfoFromXMLByHour per trovare dei tar"
+            return
+        try:
+            with nostdout():
+                client_ftp=PyFTPclient(self.ftp_ip,21,'','')
+            for i,tar in enumerate(self.tar_salvati.keys()):
+                if not os.path.exists(self.dir_finale_h5+tar):
+                    with nostdout():
+                        client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
+            print "download completato del tar numero:",i+1
+        except:
+            print "errore nel download del tarx"
 
     def checkAllPotGoodGZFromTars(self):
         import tarfile as t
@@ -245,39 +249,92 @@ class EstrazioneH5:
             except:
                 print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
                 continue
-    def checkPotGoodGZFromTars(self,tar,gz):
+        return None
+    
+    def checkAllPotGoodGZFromTars2(self,orario):
         import tarfile as t
-        import sys 
-        try:
-            open(self.dir_finale_h5+tar, 'r')
-            tar_file=t.open(name=self.dir_finale_h5+tar, mode='r', fileobj=None, bufsize=10240)
-            tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
-            print "estrazione file gz dal file tar completata"
-            import subprocess
-            #estrazione gz da bash 
-            print self.dir_finale_h5+gz
-            bash="gunzip "+self.dir_finale_h5+gz
-            process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
-            #output, error = process.communicate()
-            print "estrazione file gz completata"
-            
-            #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
-            import time
-            time.sleep(2.5) 
-            
-            #apertura e ricerca dei gz che corrispondono a quelli dell'etna
-            res=self.__checkH5File(gz)
-            #se ha trovato l'h5
-            if type(res)==str:
-                self.tar_salvati[tar][gz]="Good"
-            else:
-                self.tar_salvati[tar][gz]="Not Good"
-            return res
-                    
-        except:
-            print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
- 
-           
+        import sys
+        gz_list=list()
+        differenza_lat=list()
+        differenza_long=list()
+        direzione=list()
+        for tar in self.tar_salvati.keys():    
+            try:
+                open(self.dir_finale_h5+tar, 'r')
+                tar_file=t.open(name=self.dir_finale_h5+tar, mode='r', fileobj=None, bufsize=10240)
+                for gz in self.tar_salvati[tar].keys():
+                    if self.tar_salvati[tar][gz]=="Not yet": 
+                        tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
+                        print "estrazione file gz dal file tar completata"
+                        import subprocess
+                        #estrazione gz da bash 
+                        print self.dir_finale_h5+gz
+                        bash="gunzip "+self.dir_finale_h5+gz
+                        process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
+                        #output, error = process.communicate()
+                        print "estrazione file gz completata"
+                        
+                        #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
+                        import time
+                        time.sleep(2.5) 
+                        
+                        #apertura e ricerca dei gz che corrispondono a quelli dell'etna
+                        res=self.__checkH5File(gz)
+                        if type(res)==str:
+                            self.tar_salvati[tar][gz]="Good"
+                            return res
+                        else:
+                            self.tar_salvati[tar][gz]="Not Good"
+                            #si fa un controllo su quanto è distante dall'Etna e lo si salva in una lista
+                            
+                            #se l'orario è scritto a 3 cifre(non precsio) lo si porta a 4 cifre(preciso)
+                            if(orario<1000):
+                                orario*10
+                            #il primo controllo viene fatto sulla latitudine
+                            
+                            #controllo se la latitudine è positiva e maggiore della latitudine dell' etna
+                            if(res[0][0]>self.latitudine):
+                                if(res[0][1]>self.latitudine):
+                                    differenza_lat.append(res[0][1]-self.latitudine)
+                                    direzione.append("sopra")
+                                else:
+                                    #controllo longitudine
+                                    
+                                    if(res[1][0]>self.longitudine):                                  
+                                        differenza_long.append(self.longitudine - res[1][0])
+                                        direzione.append("destra")
+                                    elif(res[1][0]<0):
+                                        differenza_long.append(self.longitudine + ((-1)*res[1][0]))
+                                        direzione.append("sinistra")
+                                    else:
+                                        differenza_long.append(self.longitudine - res[1][0])
+                                        direzione.append("sinistra")
+                            #stesso controllo ma su altri possibili valori della latitudine
+                            elif res[0][0]<0:
+                                differenza_lat.append(self.latitudine + ((-1)*res[0][0]))
+                                direzione.append("sotto")
+                            else:
+                                differenza_lat.append(self.latitudine - res[0][0])
+                                direzione.append("sotto")
+                            gz_list.append(gz)
+                         
+            except:
+                print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
+                continue
+        '''
+        print "lat:",differenza_lat
+        print "long:",differenza_long
+        print "gz:",gz_list
+        print "direzioni:",direzione
+        '''
+        i_min=differenza_lat.index(min(differenza_lat))
+        
+        #se già la latitudine non va bene non ha senso vedere la longitudine!
+        if direzione[i_min]=="sopra" or direzione[i_min]=="sotto":
+            info_distanza_minima=(differenza_lat[i_min],0,gz_list[i_min],direzione[i_min])
+        else:
+            info_distanza_minima=(differenza_lat[i_min],differenza_long[i_min],gz_list[i_min],direzione[i_min])
+        return info_distanza_minima
     def findGoodH5InDict(self):
         goodH5=[];
         for tar in self.tar_salvati.keys():
@@ -313,7 +370,7 @@ class EstrazioneH5:
     '''
     def findRecursiveGoodGZ(self,orario):
         self.extractTarAndGzInfoFromXMLByHour(orario)
-        #self.downloadTars() 
+        self.downloadTars() 
         for tar in self.tar_salvati.keys():
             gz=None
             for gzi in self.tar_salvati[tar].keys():
@@ -326,12 +383,32 @@ class EstrazioneH5:
                 h5=self.findGoodH5InDict();
                 self.writeInFileGoodH5(h5)
                 return res
-             ora_inizio=gz.split('_')[3][1:5]
-             ora_fine=gz.split('_')[4][1:5]
-             if(ora_fine)
-            self.findRecursiveGoodGZ()
+            ora_inizio=gz.split('_')[3][1:5]
+            ora_fine=gz.split('_')[4][1:5]
+            if(ora_fine):
+                self.findRecursiveGoodGZ()
+    ''' 
     
-    '''   
+    def smartFindH5(self,orario,num_tent):
+        for i in range(num_tent):
+            print "Tentativo n°",i 
+            self.extractTarAndGzInfoFromXMLByHour(orario)
+            self.downloadTars()
+            res=self.checkAllPotGoodGZFromTars2(orario)
+            if type(res)==str:
+                print "Trovato nel file gz=",self.dir_finale_h5+res
+            else:
+                print "Non trovato!Questo e' il gz più vicino(diff lat e etna,eventuale diff longitudine,nome_gz,direzione):",res 
+                print "Si prova a cercarne un altro!"
+            
+    
+        
+        
+            
+        
+        
+        
+ 
        
 
         
