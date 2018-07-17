@@ -95,8 +95,6 @@ class EstrazioneH5:
             if(matrice_long[0][shift] < self.longitudine < matrice_long[0][-shift] or matrice_long[0][-shift] < self.longitudine < matrice_long[0][shift]):
                 print "longitudine corrisponde"
                 return gz[:-3]
-            else:
-                print "long non corrisponde, provare ad allargare il range possibile!"
         else:
             print "lat non corrisponde"
         return ((matrice_lat[0][shift],matrice_lat[-1][-shift]),(matrice_long[0][shift],matrice_long[0][-shift]))
@@ -204,7 +202,7 @@ class EstrazioneH5:
                         client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
             print "download completato del tar numero:",i+1
         except:
-            print "errore nel download del tarx"
+            print "errore nel download del tar"
 
     def checkAllPotGoodGZFromTars(self):
         import tarfile as t
@@ -286,10 +284,7 @@ class EstrazioneH5:
                         else:
                             self.tar_salvati[tar][gz]="Not Good"
                             #si fa un controllo su quanto è distante dall'Etna e lo si salva in una lista
-                            
-                            #se l'orario è scritto a 3 cifre(non precsio) lo si porta a 4 cifre(preciso)
-                            if(orario<1000):
-                                orario*10
+                         
                             #il primo controllo viene fatto sulla latitudine
                             
                             #controllo se la latitudine è positiva e maggiore della latitudine dell' etna
@@ -327,6 +322,9 @@ class EstrazioneH5:
         print "gz:",gz_list
         print "direzioni:",direzione
         '''
+        if len(differenza_lat)==0:
+            print "Errore nel download di qualche tar!"
+            return None
         i_min=differenza_lat.index(min(differenza_lat))
         
         #se già la latitudine non va bene non ha senso vedere la longitudine!
@@ -353,7 +351,7 @@ class EstrazioneH5:
         if not os.path.exists(self.dir_finale_h5+"goodH5"): 
             f=open(self.dir_finale_h5+"goodH5",'w')
             for i in h5:
-                str+=i+"/n"
+                str+=i+"\n"
             f.write(str)
             f.close()
         else: 
@@ -388,18 +386,146 @@ class EstrazioneH5:
             if(ora_fine):
                 self.findRecursiveGoodGZ()
     ''' 
-    
-    def smartFindH5(self,orario,num_tent):
+    #converte sempre l'orario  con l'orario non preciso(3 cifre)
+    def smartFindH5(self,_data,orario,num_tent):
+        import time
+        from datetime import datetime, date, time, timedelta as td
+        #se l'orario è nel formato non preciso bisogna aggiungere uno zero alla fine prima di trasformarlo in data      
+        direzione=None
+        passo=False #controlla se si è entrati almeno in una condizione all'interno del ciclo
+        salto=False #bool che indica se è stato trovato un gz dove non corrisponde solamente la longitudine ed è quindi stato fatto un salto di orbita(1 ora e 40 min), se si farà il salto non si potrà usufruire del range dei 30 minuti dal massimo 
         for i in range(num_tent):
-            print "Tentativo n°",i 
+            passo=False 
+            print "\n--------Tentativo n°",i+1 ,"-----------"
             self.extractTarAndGzInfoFromXMLByHour(orario)
             self.downloadTars()
             res=self.checkAllPotGoodGZFromTars2(orario)
             if type(res)==str:
-                print "Trovato nel file gz=",self.dir_finale_h5+res
-            else:
-                print "Non trovato!Questo e' il gz più vicino(diff lat e etna,eventuale diff longitudine,nome_gz,direzione):",res 
-                print "Si prova a cercarne un altro!"
+                print "--------------TROVATO-----------\nfile gz=",res,"\n---------------------------------"
+                return self.dir_finale_h5+res
+            if res==None:
+                print "errore all'interno della funzione di check!"
+                break
+            data=datetime.strptime(_data+" "+orario[:3]+"0", '%Y%m%d %H%M')
+            print "Non trovato!Questo e' il gz più vicino(diff lat ed etna,eventuale diff longitudine,nome_gz,direzione):",res 
+            #condizione iniziale di entrata oppure successiva ad un salto
+            if direzione==None and res[3] in ["sopra","sotto"]:
+                direzione=res[3]
+                
+            #condizione in cui salendo o scendendo con la latitudine si è superata l'Etna, per non causare ulteriori cicli inutili chiude subito
+            if (res=="sotto" and direzione=="sopra") or (res=="sopra" and direzione=="sotto"):
+                print "si è superata l'Etna, vuol dire che si è troppo lontani da essa!"
+                break;
+        
+            #controlla se l'orario sta nel range massimo diurno(tra le 11:10 e le 13:00)
+            if datetime.strptime(_data+" 1110", '%Y%m%d %H%M') <= data <=datetime.strptime(_data+" 1300", '%Y%m%d %H%M'):
+                salto=False
+                passo=True
+                if res[3]=="sotto":
+                    data = data + td(minutes=10)
+                elif res[3]=="sopra":
+
+                    data = data - td(minutes=10)
+                    
+                elif res[3]=="destra":
+                    if(self.range_utile!=0):
+                        print "[consiglio]provare ad allargare il range possibile!"
+                    print "si prova a cercare all' orbita successiva"
+                    data = data + td(minutes=100)
+                    direzione=None
+                    salto=True
+                else:
+                    if(self.range_utile!=0):
+                        print "[consiglio]provare ad allargare il range possibile!"
+                    print "si prova a cercare all' orbita precedente"
+                    data = data - td(minutes=100)
+                    direzione=None
+                    salto=True
+                
+        
+            #altrimenti controlla se la data è vicina al range massimo diurno(11:10) di 30 minuti
+            elif abs(((datetime.strptime(_data+" 1110", '%Y%m%d %H%M')-data).seconds)/60)<30:
+                if(salto):
+                    break
+                else:
+                    passo=True
+                    salto=False
+                    diff=abs(((data-datetime.strptime(_data+" 1110", '%Y%m%d %H%M')).seconds)/60)<30
+                    #si va a cercare a partire da= 13:00 - minuti_di_diff
+                    data=datetime.strptime(_data+" 1300", '%Y%m%d %H%M')-td(minutes=diff)
+                    direzione=None
+                    
+            #altrimenti controlla se la data è vicina al range massimo diurno(13:00) di 30 minuti
+            elif abs(((data-datetime.strptime(_data+" 1300", '%Y%m%d %H%M')).seconds)/60)<30:
+                if(salto):
+                    break
+                else:
+                    passo=True
+                    salto=False
+                    diff=abs(((data-datetime.strptime(_data+" 1300", '%Y%m%d %H%M')).seconds)/60)<30
+                    #si va a cercare a partire da= 11:10 + minuti_di_diff
+                    data=datetime.strptime(_data+" 1110", '%Y%m%d %H%M')+td(minutes=diff)
+                    direzione=None
+                    
+                
+                
+                
+            #controlla se l'orario sta nel range massimo notturno(tra le 00:10 e le 02:00)
+            if datetime.strptime(_data+" 0010", '%Y%m%d %H%M') <= data <=datetime.strptime(_data+" 0200", '%Y%m%d %H%M'):
+                passo=True
+                salto=False
+                if res[3]=="sotto":
+                    data = data - td(minutes=10)
+                elif res[3]=="sopra":
+                    data = data + td(minutes=10)
+                    
+                elif res[3]=="destra":
+                    if(self.range_utile!=0):
+                        print "[consiglio]provare ad allargare il range possibile!"
+                    print "si prova a cercare all' orbita successiva"
+                    data = data + td(minutes=100)
+                    direzione=None
+                    salto=True
+                else:
+                    if(self.range_utile!=0):
+                        print "[consiglio]provare ad allargare il range possibile!"
+                    print "si prova a cercare all' orbita precedente"
+                    data = data - td(minutes=100)
+                    direzione=None
+                    salto=True
+            #altrimenti controlla se la data è vicina al range massimo diurno(00:10) di 30 minuti    
+            elif abs(((datetime.strptime(_data+" 0010", '%Y%m%d %H%M')-data).seconds)/60)<30:
+                if(salto):
+                    break
+                else:
+                    passo=True
+                    salto=False
+                    diff=abs(((data-datetime.strptime(_data+" 0010", '%Y%m%d %H%M')).seconds)/60)<30
+                    #si va a cercare a partire da= 02:00 - minuti_di_diff
+                    data=datetime.strptime(_data+" 0200", '%Y%m%d %H%M')-td(minutes=diff)
+                    direzione=None
+                    
+            #altrimenti controlla se la data è vicina al range massimo diurno(02:00) di 30 minuti    
+            elif abs(((data-datetime.strptime(_data+" 0200", '%Y%m%d %H%M')).seconds)/60)<30:
+                if(salto):
+                    break
+                else:
+                    passo=True
+                    salto=False
+                    diff=abs(((data-datetime.strptime(_data+" 0200", '%Y%m%d %H%M')).seconds)/60)<30
+                    #si va a cercare a partire da= 00:10 + minuti_di_diff
+                    data=datetime.strptime(_data+" 0010", '%Y%m%d %H%M')+td(minutes=diff)
+                    direzione=None
+                    
+            if(not passo):
+                break
+            orario=data.strftime("%H%M")[:3]
+            print "Si prova a cercarne un altro all'ora "+data.strftime("%H:%M")
+            
+            
+            
+            
+            
             
     
         
