@@ -88,15 +88,37 @@ class EstrazioneH5:
         matrice_long=f[all_data][data]['Longitude']
         print "long1=",matrice_long[0][shift]," long2=",matrice_long[0][-shift]
         #controlla se la latitudine è compresa tra i valori di inizio e fine della mat
-        if(matrice_lat[0][shift] < self.latitudine < matrice_lat[-1][-shift] or matrice_lat[-1][-shift] < self.latitudine < matrice_lat[0][shift]):
-            
-            print "latitudine corrisponde"
-            #controlla se la longitudine è compresa tra i valori 
-            if(matrice_long[0][shift] < self.longitudine < matrice_long[0][-shift] or matrice_long[0][-shift] < self.longitudine < matrice_long[0][shift]):
-                print "longitudine corrisponde"
-                return gz[:-3]
+        if(matrice_lat[0][shift] < matrice_lat[-1][-shift]):
+            if(matrice_lat[0][shift] < self.latitudine < matrice_lat[-1][-shift]): 
+                print "latitudine corrisponde"
+                #controlla se la longitudine è compresa tra i valori 
+                if(matrice_long[0][shift] < matrice_long[0][-shift]):
+                    if(matrice_long[0][shift] < self.longitudine < matrice_long[0][-shift]):
+                        print "longitudine corrisponde"
+                        return gz[:-3]
+                else:
+                    if(matrice_long[0][-shift] < self.longitudine < matrice_long[0][shift]):
+                        print "longitudine corrisponde"
+                        return gz[:-3]
+                    
+            else:
+                print "lat non corrisponde"
         else:
-            print "lat non corrisponde"
+            if(matrice_lat[-1][-shift] < self.latitudine < matrice_lat[0][shift]):
+                print "latitudine corrisponde"
+                #controlla se la longitudine è compresa tra i valori 
+                if(matrice_long[0][shift] < matrice_long[0][-shift]):
+                    if(matrice_long[0][shift] < self.longitudine < matrice_long[0][-shift]):
+                        print "longitudine corrisponde"
+                        return gz[:-3]
+                else:
+                    if(matrice_long[0][-shift] < self.longitudine < matrice_long[0][shift]):
+                        print "longitudine corrisponde"
+                        return gz[:-3]
+                    
+            else:
+                print "lat non corrisponde"
+                
         return ((matrice_lat[0][shift],matrice_lat[-1][-shift]),(matrice_long[0][shift],matrice_long[0][-shift]))
                 
     #-----PROCEDURE PUBBLICHE-----
@@ -374,7 +396,20 @@ class EstrazioneH5:
         if not os.path.exists(self.dir_base+yesterday.strftime('%Y%m%d')+'/'+self.tipologia_file+"/h5/goodH5"):
             print "cartella del giorno precedente o file GoodH5 non trovato!"
         else:
-            print "file goodH5 trovato in data ",yesterday,"!"
+            try:
+                print "file goodH5 trovato in data ",yesterday,"!"
+                orari=list()
+                f = open(self.dir_base+yesterday.strftime('%Y%m%d')+'/'+self.tipologia_file+"/h5/goodH5")    
+                for line in f:
+                    orari.append(line)                
+                                   
+                f.close()
+            except: print "errore nell'apertura del file goodH5"
+            
+            for i in orari:
+                orario_inizio=i.split("_")[3][1:4]
+                print orario_inizio
+
         
         
         
@@ -410,8 +445,8 @@ class EstrazioneH5:
                 print "si è superata l'Etna, vuol dire che si è troppo lontani da essa!"
                 break;
         
-            #controlla se l'orario sta nel range massimo diurno(tra le 11:10 e le 13:00)
-            if datetime.strptime(_data+" 1110", '%Y%m%d %H%M') <= data <=datetime.strptime(_data+" 1300", '%Y%m%d %H%M'):
+            #controlla se l'orario sta nel range massimo diurno(tra le 11:00 e le 13:00)
+            if datetime.strptime(_data+" 1100", '%Y%m%d %H%M') <= data <=datetime.strptime(_data+" 1300", '%Y%m%d %H%M'):
                 salto=False
                 passo=True
                 if res[3]=="sotto":
@@ -436,14 +471,14 @@ class EstrazioneH5:
                     salto=True
                 
         
-            #altrimenti controlla se la data è vicina al range massimo diurno(11:10) di 30 minuti
-            elif abs(((datetime.strptime(_data+" 1110", '%Y%m%d %H%M')-data).seconds)/60)<30:
+            #altrimenti controlla se la data è vicina al range massimo diurno(11:00) di 30 minuti
+            elif abs(((datetime.strptime(_data+" 1100", '%Y%m%d %H%M')-data).seconds)/60)<30:
                 if(salto):
                     break
                 else:
                     passo=True
                     salto=False
-                    diff=abs(((data-datetime.strptime(_data+" 1110", '%Y%m%d %H%M')).seconds)/60)<30
+                    diff=abs(((data-datetime.strptime(_data+" 1100", '%Y%m%d %H%M')).seconds)/60)<30
                     #si va a cercare a partire da= 13:00 - minuti_di_diff
                     data=datetime.strptime(_data+" 1300", '%Y%m%d %H%M')-td(minutes=diff)
                     direzione=None
@@ -456,8 +491,8 @@ class EstrazioneH5:
                     passo=True
                     salto=False
                     diff=abs(((data-datetime.strptime(_data+" 1300", '%Y%m%d %H%M')).seconds)/60)<30
-                    #si va a cercare a partire da= 11:10 + minuti_di_diff
-                    data=datetime.strptime(_data+" 1110", '%Y%m%d %H%M')+td(minutes=diff)
+                    #si va a cercare a partire da= 11:00 + minuti_di_diff
+                    data=datetime.strptime(_data+" 1100", '%Y%m%d %H%M')+td(minutes=diff)
                     direzione=None
                     
                 
