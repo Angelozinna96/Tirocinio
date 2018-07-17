@@ -365,27 +365,20 @@ class EstrazioneH5:
                 f=open(self.dir_finale_h5+"goodH5",'a')            
                 f.write(str)
                 f.close()
-    '''
-    def findRecursiveGoodGZ(self,orario):
-        self.extractTarAndGzInfoFromXMLByHour(orario)
-        self.downloadTars() 
-        for tar in self.tar_salvati.keys():
-            gz=None
-            for gzi in self.tar_salvati[tar].keys():
-                    if gzi == "Not yet":
-                        gz=gzi
-                        break
-            res=self.checkPotGoodGZFromTars(tar,gz)
-            if type(res)==str:
-                print "trovato"
-                h5=self.findGoodH5InDict();
-                self.writeInFileGoodH5(h5)
-                return res
-            ora_inizio=gz.split('_')[3][1:5]
-            ora_fine=gz.split('_')[4][1:5]
-            if(ora_fine):
-                self.findRecursiveGoodGZ()
-    ''' 
+    def findFromYesterday(self,_data,giorno_notte,num_tent):
+        import time
+        import os
+        from datetime import datetime, date, time, timedelta as td
+        data=datetime.strptime(_data+" 0000", '%Y%m%d %H%M')
+        yesterday=data - td(days=1)
+        if not os.path.exists(self.dir_base+yesterday.strftime('%Y%m%d')+'/'+self.tipologia_file+"/h5/goodH5"):
+            print "cartella del giorno precedente o file GoodH5 non trovato!"
+        else:
+            print "file goodH5 trovato in data ",yesterday,"!"
+        
+        
+        
+        
     #converte sempre l'orario  con l'orario non preciso(3 cifre)
     def smartFindH5(self,_data,orario,num_tent):
         import time
