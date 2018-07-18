@@ -26,7 +26,7 @@ class EstrazioneH5:
     h5_buoni=[]
     
     
-    def __init__(self,data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',ip='ftp-npp.bou.class.noaa.gov',dir_base="~/Desktop/",lat=37.755,lon=15):
+    def __init__(self,data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',ip='ftp-npp.bou.class.noaa.gov',dir_base="./",lat=37.755,lon=15):
         self.data_search=data
         self.ftp_ip=ip
         self.range_utile=rang
@@ -222,7 +222,7 @@ class EstrazioneH5:
                 if not os.path.exists(self.dir_finale_h5+tar):
                     with nostdout():
                         client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
-            print "download completato del tar numero:",i+1
+            print "download completato del tar"
         except:
             print "errore nel download del tar"
 
@@ -285,14 +285,14 @@ class EstrazioneH5:
                 for gz in self.tar_salvati[tar].keys():
                     if self.tar_salvati[tar][gz]=="Not yet": 
                         tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
-                        print "estrazione file gz dal file tar completata"
+                        #print "estrazione file gz dal file tar completata"
                         import subprocess
                         #estrazione gz da bash 
                         print self.dir_finale_h5+gz
                         bash="gunzip "+self.dir_finale_h5+gz
                         process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
                         #output, error = process.communicate()
-                        print "estrazione file gz completata"
+                        #print "estrazione file gz completata"
                         
                         #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
                         import time
@@ -387,6 +387,7 @@ class EstrazioneH5:
                 f=open(self.dir_finale_h5+"goodH5",'a')            
                 f.write(str)
                 f.close()
+    '''
     def findFromYesterday(self,_data,giorno_notte,num_tent):
         import time
         import os
@@ -407,9 +408,74 @@ class EstrazioneH5:
             except: print "errore nell'apertura del file goodH5"
             
             for i in orari:
-                orario_inizio=i.split("_")[3][1:4]
-                print orario_inizio
+                orario_fine=i.split("_")[4][1:4]
+                
+                yesterday=data - td(days=1)
+                yesterday_data=yesterday.strftime('%Y%m%d')
+                
+                yesterday=datetime.strptime(yesterday_data+" "+orario_fine+"0", '%Y%m%d %H%M')
+                print yesterday
+                if datetime.strptime(yesterday_data+" 1100", '%Y%m%d %H%M') <= yesterday <=datetime.strptime(yesterday_data+" 1300", '%Y%m%d %H%M'):
+                    yesterday=yesterday - td(minutes=20)
+                    if yesterday < datetime.strptime(yesterday_data+" 1100", '%Y%m%d %H%M'):
+                        yesterday=datetime.strptime(yesterday_data+" 1300", '%Y%m%d %H%M')
+                    
 
+      '''
+    #formato data AAAA-MM-GG
+    def downloadInfoNPPFile(self,_data):
+        import urllib2
+        import json
+        import subprocess
+        anno=_data.split("-")[0] 
+        #ricerca del file da scaricare(inutile visto che è sempre la data corrente)
+        '''
+        response = urllib2.urlopen('https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/'+anno+'.json')
+        data = response.read()
+        lista=json.loads(data)
+        response.close()
+        nomefile=""
+        for i in range(len(lista)):
+             if lista[i]["name"].find(_data)!=-1:
+                 nomefile=lista[i]["name"]
+        print nomefile
+        '''
+        #download del file da bash con wget
+        URL="https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/"+anno+"/VNP03MOD_"+_data+".txt"
+        bash="wget  "+URL+" -P "+self.dir_base+self.data_search+'/'+self.tipologia_file+"/"
+        process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
+        print "download del file txt contenente tutte le info su dove si trova il satellite completato!"
+        
+    #formato data AAAA-MM-GG
+    def extractInfoNPPFile(self,_data): 
+        dati_file=open(self.dir_base+self.data_search+'/'+self.tipologia_file+"/"+"VNP03MOD_"+_data+".txt","r")
+        ore=list()
+        for line in dati_file:
+            est=line.split(",")[5]
+            ovest=line.split(",")[8]
+            nord=line.split(",")[6]
+            sud=line.split(",")[7]
+            try:
+                if float(est)>15 and float(ovest)<14 and float(nord)>38 and float(sud)<37 :
+                    print "-----------trovato---------"
+                    print " north="+line.split(",")[7]+" south="+line.split(",")[8]+" east="+line.split(",")[6]+" west="+line.split(",")[9]
+                    print "all'ora="+line.split(",")[1].split(" ")[1]
+                    ore.append(line.split(",")[1].split(" ")[1])
+            except ValueError:
+                continue
+        dati_file.close()
+        print "orari da andare a scaricare:",ore
+        return ore
+
+    def secureFind(self,_data):
+        self.downloadInfoNPPFile(_data)
+        ore=self.extractInfoNPPFile(_data)
+        for i in ore:
+            oramod=""
+            ora_mod=i.split(":")[0]+i.split(":")[1]
+            self.smartFindH5(_data,ora_mod,1)
+            
         
         
         
