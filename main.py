@@ -8,8 +8,9 @@ Created on Thu May 10 11:58:17 2018
 
 from EstrazioneH5 import EstrazioneH5
 _data="2018-07-15"
+data=_data.split("-")[0]+_data.split("-")[1]+_data.split("-")[2]
 orario="110"
-obj=EstrazioneH5(data=_data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',dir_base='/Users/angelozinna/Desktop/university/3anno/tirocinio/dati/')
+obj=EstrazioneH5(data=data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',dir_base='/Users/angelozinna/Desktop/university/3anno/tirocinio/dati/')
 obj.createDirs()
 obj.connectFTP()
 obj.downloadXMLs()
