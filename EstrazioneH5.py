@@ -474,6 +474,7 @@ class EstrazioneH5:
         for i in ore:
             oramod=""
             ora_mod=i.split(":")[0]+i.split(":")[1]
+            ora_mod=ora_mod[:3]
             self.smartFindH5(_data,ora_mod,1)
             
         
