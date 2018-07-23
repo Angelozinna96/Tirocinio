@@ -22,7 +22,7 @@ Through empirical analysis I found out that it passing always in the same range 
 * 	**NASA Site:"ladsweb.modaps.eosdis.nasa.gov/archive/"**, where take orbit satellite informations (geolocation over time), useful to known in which hours search the datasets in the FTP server
 
 
-#Instructions for Use
+# Instructions for Use
 There are 2 way that you can run main.py:
 *	**Specifyng the date in the first parameter**: you can specify the date from where to download h5 datasets(format: YYYY-MM-DD)
 *	**Without specifyng on the date**:the program will use the current date
