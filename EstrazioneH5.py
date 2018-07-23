@@ -100,9 +100,11 @@ class EstrazioneH5:
                     if(matrice_long[0][-shift] < self.longitudine < matrice_long[0][shift]):
                         print "longitudine corrisponde"
                         return gz[:-3]
+                print "longitudine non corrisponde"
                     
             else:
                 print "lat non corrisponde"
+                print "longitudine nemmeno controllata"
         else:
             if(matrice_lat[-1][-shift] < self.latitudine < matrice_lat[0][shift]):
                 print "latitudine corrisponde"
@@ -115,9 +117,10 @@ class EstrazioneH5:
                     if(matrice_long[0][-shift] < self.longitudine < matrice_long[0][shift]):
                         print "longitudine corrisponde"
                         return gz[:-3]
-                    
+                print "longitudine non corrisponde"
             else:
                 print "lat non corrisponde"
+                print "longitudine nemmeno controllata"
                 
         return ((matrice_lat[0][shift],matrice_lat[-1][-shift]),(matrice_long[0][shift],matrice_long[0][-shift]))
                 
@@ -185,7 +188,7 @@ class EstrazioneH5:
                     ore_inizio=nomefile.split('_')[3][1:5]
                     ore_fine=nomefile.split('_')[4][1:5]
                     #ricerca per orario dei granuli
-                    if ore_inizio[:len(orario)]==orario:
+                    if ore_inizio[:len(orario)]==orario or ore_fine[:len(orario)]==orario:
                         if tar_creato==False and name.split(".manifest")[0] not in self.tar_salvati.keys():
                             self.tar_salvati[name.split(".manifest")[0]]={}
                             tar_creato=True
@@ -427,7 +430,9 @@ class EstrazioneH5:
         import urllib2
         import json
         import subprocess
-        anno=_data.split("-")[0] 
+       
+        data=_data[:4]+"-"+_data[4:6]+"-"+_data[6:8]
+        anno=data.split("-")[0] 
         #ricerca del file da scaricare(inutile visto che è sempre la data corrente)
         '''
         response = urllib2.urlopen('https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/'+anno+'.json')
@@ -441,15 +446,19 @@ class EstrazioneH5:
         print nomefile
         '''
         #download del file da bash con wget
-        URL="https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/"+anno+"/VNP03MOD_"+_data+".txt"
-        bash="wget  "+URL+" -P "+self.dir_base+self.data_search+'/'+self.tipologia_file+"/"
+        URL="https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/"+anno+"/VNP03MOD_"+data+".txt"
+        print URL
+        bash="wget  "+URL+" -P "+self.dir_base+self.data_search+'/'
         process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate()
+        output, error = process.communicate() 
+        import time
+        time.sleep(2.5) 
         print "download del file txt contenente tutte le info su dove si trova il satellite completato!"
         
     #formato data AAAA-MM-GG
-    def extractInfoNPPFile(self,_data): 
-        dati_file=open(self.dir_base+self.data_search+'/'+self.tipologia_file+"/"+"VNP03MOD_"+_data+".txt","r")
+    def extractInfoNPPFile(self,_data):
+        data=_data[:4]+"-"+_data[4:6]+"-"+_data[6:8]
+        dati_file=open(self.dir_base+self.data_search+'/'+"VNP03MOD_"+data+".txt","r")
         ore=list()
         for line in dati_file:
             est=line.split(",")[5]
@@ -460,6 +469,7 @@ class EstrazioneH5:
                 if float(est)>15 and float(ovest)<14 and float(nord)>38 and float(sud)<37 :
                     print "-----------trovato---------"
                     print " north="+line.split(",")[7]+" south="+line.split(",")[8]+" east="+line.split(",")[6]+" west="+line.split(",")[9]
+                    print line.split(",")[1]
                     print "all'ora="+line.split(",")[1].split(" ")[1]
                     ore.append(line.split(",")[1].split(" ")[1])
             except ValueError:
@@ -475,7 +485,13 @@ class EstrazioneH5:
             oramod=""
             ora_mod=i.split(":")[0]+i.split(":")[1]
             ora_mod=ora_mod[:3]
-            self.smartFindH5(_data,ora_mod,1)
+            print "orario:",ora_mod
+            #self.smartFindH5(_data,ora_mod,1)
+            self.extractTarAndGzInfoFromXMLByHour(ora_mod)
+            self.downloadTars()
+            res=self.checkAllPotGoodGZFromTars2(ora_mod)
+            if type(res)==str:
+              print res
             
         
         
