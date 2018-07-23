@@ -1,5 +1,0 @@
-se è di sera e l'orario è del tipo 00:33 , molto probabilmente la scansione è cominciata alle 00:28
-circa quindi non troverà il file perchè cerchera alle 00:30.
-Bisogna quindi controllare dalla data del txt se è sera , 
-e se lo è guardare se gli ultimi minuti sono minori o uguali a  5,
-se si allora andare a cercare anche 10 minuti prima

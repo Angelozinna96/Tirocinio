@@ -17,8 +17,9 @@ class EstrazioneH5:
     dir_ftp=""
     all_file=[]
     dir_base=""
-    dir_finale=""
+    dir_finale_xml=""
     dir_finale_h5=""
+    dir_finale_goodh5=""
     range_orario=20
     ftp=None
     tar_salvati={}
@@ -26,7 +27,7 @@ class EstrazioneH5:
     h5_buoni=[]
     
     
-    def __init__(self,data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',ip='ftp-npp.bou.class.noaa.gov',dir_base="./",lat=37.755,lon=15):
+    def __init__(self,data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',dir_base="./",lat=37.755,lon=15,ip='ftp-npp.bou.class.noaa.gov'):
         self.data_search=data
         self.ftp_ip=ip
         self.range_utile=rang
@@ -35,6 +36,10 @@ class EstrazioneH5:
         self.tipologia_file=tip
         self.dir_base=dir_base
         self.dir_ftp=data+'/VIIRS-SDR/'+tip+'/NPP/'
+        self.createDirs()
+        self.connectFTP()
+        self.downloadXMLs()
+
         
     #-----FUNZIONI SET-----
     
@@ -55,21 +60,21 @@ class EstrazioneH5:
         self.dir_base=dir_base
         
     #-----FUNZIONI GET-----
-    
-    def getTarsPotenzialmenteBuoni(self):
-        return self.tar_salvati.keys()
-    def getGZPotenzialmenteBuoni(self):
-        return self.tar_salvati.values()
-    
+
+
+
     #-----PROCEDURE PRIVATE-----
     
-   
+    def __calculateShift(self,length):
+      shift=int(length*self.range_utile) +1
+      return shift
+        
     def __checkH5File(self,gz):
         import h5py
         try:
             f = h5py.File(self.dir_finale_h5+gz[:-3], 'r') 
         except:
-            print "file h5 non trovato o dannegiato"
+            print "file h5 non trovato o dannegiato!"
             return None
         #si seleziona all_data tra le key
         all_data= list(f.keys())[0]
@@ -80,9 +85,8 @@ class EstrazioneH5:
         matrice_long=[[]]
         
         #calcolo range utile della mat da guardare
-        shift=int(matrice_lat.shape[1]*self.range_utile) +1
-        
-        print "shift dal quale cominciare a prendere i dati:",shift
+        shift=self.__calculateShift(matrice_lat.shape[1])        
+        print "\nshift dal quale cominciare a prendere i dati:",shift
         print "lat1=",matrice_lat[0][shift]," lat2=",matrice_lat[-1][-shift]
         #da mettere dentro l if dopo il debug
         matrice_long=f[all_data][data]['Longitude']
@@ -122,7 +126,7 @@ class EstrazioneH5:
                 print "lat non corrisponde"
                 print "longitudine nemmeno controllata"
                 
-        return ((matrice_lat[0][shift],matrice_lat[-1][-shift]),(matrice_long[0][shift],matrice_long[0][-shift]))
+        return None
                 
     #-----PROCEDURE PUBBLICHE-----
     def connectFTP(self):
@@ -134,30 +138,32 @@ class EstrazioneH5:
         #download della lista dei file nella directory dir_ftp
         res_ftp=self.ftp.retrlines('NLST',self.all_file.append)
         #print res_ftp
-        print "connessione al server ftp riuscita!"
+        print "CONNESSIONE AL SERVER FTP RIUSCITA!"
         res_ftp=res_ftp.split(' ')
         #calcolo file xml da scaricare
-        num_el_xml=int(res_ftp[1])/2
-        print "num_file xml=%d"% num_el_xml
         
     def createDirs(self):
         import os
         #creazione cartelle della data , xml e h5
-        self.dir_finale=self.dir_base+self.data_search+'/'+self.tipologia_file+"/xml"
+        self.dir_finale_xml=self.dir_base+self.data_search+'/'+self.tipologia_file+"/xml"
         self.dir_finale_h5=self.dir_base+self.data_search+'/'+self.tipologia_file+"/h5"
-        if not os.path.exists(self.dir_finale):
-            os.makedirs(self.dir_finale)
+        self.dir_finale_goodh5=self.dir_base+self.data_search+'/'+self.tipologia_file+"/GoodH5"
+        if not os.path.exists(self.dir_finale_xml):
+            os.makedirs(self.dir_finale_xml)
         if not os.path.exists(self.dir_finale_h5):
             os.makedirs(self.dir_finale_h5)
-        self.dir_finale=self.dir_finale+'/'
+        if not os.path.exists(self.dir_finale_goodh5):
+            os.makedirs(self.dir_finale_goodh5)
+        self.dir_finale_xml=self.dir_finale_xml+'/'
         self.dir_finale_h5+='/'
+        self.dir_finale_goodh5+='/'
         
     def downloadXMLs(self):
         import os
         try:
             for name in self.all_file:
-                if name.find("xml")!=-1 and not os.path.exists(self.dir_finale+name):
-                    new_file=open(self.dir_finale+name, 'wb')
+                if name.find("xml")!=-1 and not os.path.exists(self.dir_finale_xml+name):
+                    new_file=open(self.dir_finale_xml+name, 'wb')
                     self.ftp.retrbinary('RETR '+name, new_file.write)
                     new_file.close()
                     print 'download complete:'+name
@@ -165,7 +171,7 @@ class EstrazioneH5:
             self.ftp.quit()
         except:
             print('Error during download xml from FTP server')
-        print "download dei file xml completata"
+        
     def extractTarAndGzInfoFromXMLByHour(self,orario):
         tar_creato=False
         if len(orario)>4 or len(orario)<3:
@@ -174,13 +180,11 @@ class EstrazioneH5:
         #prelevamento info dall'xml
         import xml.etree.ElementTree as ET 
         i_buoni=[]     
-        print "date utili:"
+        print "Scansioni fatte dal satellite:"
         for i,name in enumerate(self.all_file):
             if name.find("xml")!=-1:
-                tree = ET.parse(self.dir_finale+name)
+                tree = ET.parse(self.dir_finale_xml+name)
                 root = tree.getroot()
-                #num di granuli presenti nel tar
-                num_granuli=int(root.findall('TarFileCount')[0].text)
                 tar_creato=False
                 for dataset in root.findall('Dataset'):
                     nomefile=(dataset.find('FileName').text)
@@ -199,6 +203,7 @@ class EstrazioneH5:
                         print "ora inizio:",ore_inizio,"- ora fine:",ore_fine          
         #eliminazione degli id ripetuti
         i_buoni=list(set(i_buoni))
+        print"\n"
         
     #download di un singolo tar
     def downloadTar(self,tar):
@@ -225,62 +230,13 @@ class EstrazioneH5:
                 if not os.path.exists(self.dir_finale_h5+tar):
                     with nostdout():
                         client_ftp.DownloadFile(self.dir_ftp+tar,self.dir_finale_h5+tar)
-            print "download completato del tar"
+                        print "download  del tar completato"
+            print "download di tutti i tar completato"
         except:
             print "errore nel download del tar"
 
-    def checkAllPotGoodGZFromTars(self):
+    def checkAllPotGoodGZFromTars(self,orario):
         import tarfile as t
-        import sys
-        for tar in self.tar_salvati.keys():
-            
-            try:
-
-                open(self.dir_finale_h5+tar, 'r')
-                tar_file=t.open(name=self.dir_finale_h5+tar, mode='r', fileobj=None, bufsize=10240)
-                
-                #riga seguente inutile
-                #lista=tar_file.getnames()
-                #print lista
-           
-                
-                for gz in self.tar_salvati[tar].keys():
-                    if self.tar_salvati[tar][gz]=="Not yet": 
-                        tar_file.extract(tar_file.getmember(gz),self.dir_finale_h5)
-                        print "estrazione file gz dal file tar completata"
-                        import subprocess
-                        #estrazione gz da bash 
-                        print self.dir_finale_h5+gz
-                        bash="gunzip "+self.dir_finale_h5+gz
-                        process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
-                        #output, error = process.communicate()
-                        print "estrazione file gz completata"
-                        
-                        #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
-                        import time
-                        time.sleep(2.5) 
-                        
-                        #apertura e ricerca dei gz che corrispondono a quelli dell'etna
-                        res=self.__checkH5File(gz)
-                        if type(res)==str:
-                            self.tar_salvati[tar][gz]="Good"
-                            res=None
-                            return res
-                        else:
-                            self.tar_salvati[tar][gz]="Not Good"
-                        
-            except:
-                print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
-                continue
-        return None
-    
-    def checkAllPotGoodGZFromTars2(self,orario):
-        import tarfile as t
-        import sys
-        gz_list=list()
-        differenza_lat=list()
-        differenza_long=list()
-        direzione=list()
         for tar in self.tar_salvati.keys():    
             try:
                 open(self.dir_finale_h5+tar, 'r')
@@ -291,7 +247,6 @@ class EstrazioneH5:
                         #print "estrazione file gz dal file tar completata"
                         import subprocess
                         #estrazione gz da bash 
-                        print self.dir_finale_h5+gz
                         bash="gunzip "+self.dir_finale_h5+gz
                         process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
                         #output, error = process.communicate()
@@ -299,8 +254,7 @@ class EstrazioneH5:
                         
                         #delay impostato per permettere di estrarre tutto il file h5 prima di usarlo
                         import time
-                        time.sleep(2.5) 
-                        
+                        time.sleep(2.5)                        
                         #apertura e ricerca dei gz che corrispondono a quelli dell'etna
                         res=self.__checkH5File(gz)
                         if type(res)==str:
@@ -308,152 +262,30 @@ class EstrazioneH5:
                             return res
                         else:
                             self.tar_salvati[tar][gz]="Not Good"
-                            #si fa un controllo su quanto è distante dall'Etna e lo si salva in una lista
-                         
-                            #il primo controllo viene fatto sulla latitudine
                             
-                            #controllo se la latitudine è positiva e maggiore della latitudine dell' etna
-                            if(res[0][0]>self.latitudine):
-                                if(res[0][1]>self.latitudine):
-                                    differenza_lat.append(res[0][1]-self.latitudine)
-                                    direzione.append("sopra")
-                                else:
-                                    #controllo longitudine
-                                    
-                                    if(res[1][0]>self.longitudine):                                  
-                                        differenza_long.append(self.longitudine - res[1][0])
-                                        direzione.append("destra")
-                                    elif(res[1][0]<0):
-                                        differenza_long.append(self.longitudine + ((-1)*res[1][0]))
-                                        direzione.append("sinistra")
-                                    else:
-                                        differenza_long.append(self.longitudine - res[1][0])
-                                        direzione.append("sinistra")
-                            #stesso controllo ma su altri possibili valori della latitudine
-                            elif res[0][0]<0:
-                                differenza_lat.append(self.latitudine + ((-1)*res[0][0]))
-                                direzione.append("sotto")
-                            else:
-                                differenza_lat.append(self.latitudine - res[0][0])
-                                direzione.append("sotto")
-                            gz_list.append(gz)
                          
             except:
                 print "\ntar file=",tar," non disponibile in ",self.dir_finale_h5, " o corrotto,scaricarlo di nuovo!"
                 continue
-        '''
-        print "lat:",differenza_lat
-        print "long:",differenza_long
-        print "gz:",gz_list
-        print "direzioni:",direzione
-        '''
-        if len(differenza_lat)==0:
-            print "Errore nel download di qualche tar!"
-            return None
-        i_min=differenza_lat.index(min(differenza_lat))
-        
-        #se già la latitudine non va bene non ha senso vedere la longitudine!
-        if direzione[i_min]=="sopra" or direzione[i_min]=="sotto":
-            info_distanza_minima=(differenza_lat[i_min],0,gz_list[i_min],direzione[i_min])
-        else:
-            info_distanza_minima=(differenza_lat[i_min],differenza_long[i_min],gz_list[i_min],direzione[i_min])
-        return info_distanza_minima
-    def findGoodH5InDict(self):
-        goodH5=[];
-        for tar in self.tar_salvati.keys():
-            for gz in  self.tar_salvati[tar]:
-                if self.tar_salvati[tar][gz]=="Good":
-                    goodH5.append(gz[:-3])
-        if len(goodH5) > 0:
-            return goodH5
-        else:
-            return None
-        
-    def writeInFileGoodH5(self,h5):
-        import os
-        
-        str=""
-        if not os.path.exists(self.dir_finale_h5+"goodH5"): 
-            f=open(self.dir_finale_h5+"goodH5",'w')
-            for i in h5:
-                str+=i+"\n"
-            f.write(str)
-            f.close()
-        else: 
-            f=open(self.dir_finale_h5+"goodH5",'r')
-            contenuto=f.read()
-            f.close()
-            for i in h5:
-                if contenuto.find(i)==-1:
-                    str+=i+"\n"
-            if len(str)>0:
-                f=open(self.dir_finale_h5+"goodH5",'a')            
-                f.write(str)
-                f.close()
-    '''
-    def findFromYesterday(self,_data,giorno_notte,num_tent):
-        import time
-        import os
-        from datetime import datetime, date, time, timedelta as td
-        data=datetime.strptime(_data+" 0000", '%Y%m%d %H%M')
-        yesterday=data - td(days=1)
-        if not os.path.exists(self.dir_base+yesterday.strftime('%Y%m%d')+'/'+self.tipologia_file+"/h5/goodH5"):
-            print "cartella del giorno precedente o file GoodH5 non trovato!"
-        else:
-            try:
-                print "file goodH5 trovato in data ",yesterday,"!"
-                orari=list()
-                f = open(self.dir_base+yesterday.strftime('%Y%m%d')+'/'+self.tipologia_file+"/h5/goodH5")    
-                for line in f:
-                    orari.append(line)                
-                                   
-                f.close()
-            except: print "errore nell'apertura del file goodH5"
-            
-            for i in orari:
-                orario_fine=i.split("_")[4][1:4]
-                
-                yesterday=data - td(days=1)
-                yesterday_data=yesterday.strftime('%Y%m%d')
-                
-                yesterday=datetime.strptime(yesterday_data+" "+orario_fine+"0", '%Y%m%d %H%M')
-                print yesterday
-                if datetime.strptime(yesterday_data+" 1100", '%Y%m%d %H%M') <= yesterday <=datetime.strptime(yesterday_data+" 1300", '%Y%m%d %H%M'):
-                    yesterday=yesterday - td(minutes=20)
-                    if yesterday < datetime.strptime(yesterday_data+" 1100", '%Y%m%d %H%M'):
-                        yesterday=datetime.strptime(yesterday_data+" 1300", '%Y%m%d %H%M')
-                    
-
-      '''
+        return None
+  
+  
     #formato data AAAA-MM-GG
-    def downloadInfoNPPFile(self,_data):
-        import urllib2
-        import json
+    def downloadInfoNPPFile(self,_data):        
         import subprocess
-       
+        import os
+          
         data=_data[:4]+"-"+_data[4:6]+"-"+_data[6:8]
         anno=data.split("-")[0] 
-        #ricerca del file da scaricare(inutile visto che è sempre la data corrente)
-        '''
-        response = urllib2.urlopen('https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/'+anno+'.json')
-        data = response.read()
-        lista=json.loads(data)
-        response.close()
-        nomefile=""
-        for i in range(len(lista)):
-             if lista[i]["name"].find(_data)!=-1:
-                 nomefile=lista[i]["name"]
-        print nomefile
-        '''
-        #download del file da bash con wget
-        URL="https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/"+anno+"/VNP03MOD_"+data+".txt"
-        print URL
-        bash="wget  "+URL+" -P "+self.dir_base+self.data_search+'/'
-        process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate() 
-        import time
-        time.sleep(2.5) 
-        print "download del file txt contenente tutte le info su dove si trova il satellite completato!"
+        nomefile="VNP03MOD_"+data+".txt"
+        if not os.path.exists(self.dir_base+self.data_search+"/"+nomefile):
+          #download del file da bash con wget
+          URL="https://ladsweb.modaps.eosdis.nasa.gov/archive/geoMetaJPSS/5110/NPP/"+anno+"/"+nomefile
+          print URL
+          bash="wget  "+URL+" -P "+self.dir_base+self.data_search+'/'
+          process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
+          output, error = process.communicate() 
+          print "download del file txt contenente tutte le info su dove si trova il satellite completato!"
         
     #formato data AAAA-MM-GG
     def extractInfoNPPFile(self,_data):
@@ -467,187 +299,47 @@ class EstrazioneH5:
             sud=line.split(",")[7]
             try:
                 if float(est)>15 and float(ovest)<14 and float(nord)>38 and float(sud)<37 :
+                    '''
                     print "-----------trovato---------"
                     print " north="+line.split(",")[7]+" south="+line.split(",")[8]+" east="+line.split(",")[6]+" west="+line.split(",")[9]
-                    print line.split(",")[1]
                     print "all'ora="+line.split(",")[1].split(" ")[1]
+                    '''
                     ore.append(line.split(",")[1].split(" ")[1])
             except ValueError:
                 continue
         dati_file.close()
-        print "orari da andare a scaricare:",ore
+        print "orari in cui il satellite è passato dall'Etna:",ore
         return ore
 
     def secureFind(self,_data):
+        import subprocess
+        import os
         self.downloadInfoNPPFile(_data)
         ore=self.extractInfoNPPFile(_data)
+        orari_trovati=list()
         for i in ore:
-            oramod=""
             ora_mod=i.split(":")[0]+i.split(":")[1]
             ora_mod=ora_mod[:3]
-            print "orario:",ora_mod
-            #self.smartFindH5(_data,ora_mod,1)
+            print "----------SCANSIONE ORARIO =",ora_mod[:2]+":"+ora_mod[2]+"0----------\n"
             self.extractTarAndGzInfoFromXMLByHour(ora_mod)
             self.downloadTars()
-            res=self.checkAllPotGoodGZFromTars2(ora_mod)
+            res=self.checkAllPotGoodGZFromTars(ora_mod)
             if type(res)==str:
-              print res
+              orario_trovato=res.split("_")[3][1:5]+"-"+res.split("_")[4][1:5]
+              print "########## TROVATO ALL'ORARIO:",orario_trovato,"\n"
+              orari_trovati.append(orario_trovato)
+              #copia dell'h5 dalla cartella h5 alla cartella GoodH5
+              if not os.path.exists(self.dir_finale_goodh5+res):
+                bash="mv "+self.dir_finale_h5+res+"  "+self.dir_finale_goodh5
+                process = subprocess.Popen(bash.split(), stdout=subprocess.PIPE)
+            print "-------------------------------------------\n\n\n"
             
-        
-        
-        
-        
-    #converte sempre l'orario  con l'orario non preciso(3 cifre)
-    def smartFindH5(self,_data,orario,num_tent):
-        import time
-        from datetime import datetime, date, time, timedelta as td
-        #se l'orario è nel formato non preciso bisogna aggiungere uno zero alla fine prima di trasformarlo in data      
-        direzione=None
-        passo=False #controlla se si è entrati almeno in una condizione all'interno del ciclo
-        salto=False #bool che indica se è stato trovato un gz dove non corrisponde solamente la longitudine ed è quindi stato fatto un salto di orbita(1 ora e 40 min), se si farà il salto non si potrà usufruire del range dei 30 minuti dal massimo 
-        for i in range(num_tent):
-            passo=False 
-            print "\n--------Tentativo n°",i+1 ,"-----------"
-            self.extractTarAndGzInfoFromXMLByHour(orario)
-            self.downloadTars()
-            res=self.checkAllPotGoodGZFromTars2(orario)
-            if type(res)==str:
-                print "--------------TROVATO-----------\nfile gz=",res,"\n---------------------------------"
-                return self.dir_finale_h5+res
-            if res==None:
-                print "errore all'interno della funzione di check!"
-                break
-            data=datetime.strptime(_data+" "+orario[:3]+"0", '%Y%m%d %H%M')
-            print "Non trovato!Questo e' il gz più vicino(diff lat ed etna,eventuale diff longitudine,nome_gz,direzione):",res 
-            #condizione iniziale di entrata oppure successiva ad un salto
-            if direzione==None and res[3] in ["sopra","sotto"]:
-                direzione=res[3]
-                
-            #condizione in cui salendo o scendendo con la latitudine si è superata l'Etna, per non causare ulteriori cicli inutili chiude subito
-            if (res=="sotto" and direzione=="sopra") or (res=="sopra" and direzione=="sotto"):
-                print "si è superata l'Etna, vuol dire che si è troppo lontani da essa!"
-                break;
-        
-            #controlla se l'orario sta nel range massimo diurno(tra le 11:00 e le 13:00)
-            if datetime.strptime(_data+" 1100", '%Y%m%d %H%M') <= data <=datetime.strptime(_data+" 1300", '%Y%m%d %H%M'):
-                salto=False
-                passo=True
-                if res[3]=="sotto":
-                    data = data + td(minutes=10)
-                elif res[3]=="sopra":
-
-                    data = data - td(minutes=10)
-                    
-                elif res[3]=="destra":
-                    if(self.range_utile!=0):
-                        print "[consiglio]provare ad allargare il range possibile!"
-                    print "si prova a cercare all' orbita successiva"
-                    data = data + td(minutes=100)
-                    direzione=None
-                    salto=True
-                else:
-                    if(self.range_utile!=0):
-                        print "[consiglio]provare ad allargare il range possibile!"
-                    print "si prova a cercare all' orbita precedente"
-                    data = data - td(minutes=100)
-                    direzione=None
-                    salto=True
-                
-        
-            #altrimenti controlla se la data è vicina al range massimo diurno(11:00) di 30 minuti
-            elif abs(((datetime.strptime(_data+" 1100", '%Y%m%d %H%M')-data).seconds)/60)<30:
-                if(salto):
-                    break
-                else:
-                    passo=True
-                    salto=False
-                    diff=abs(((data-datetime.strptime(_data+" 1100", '%Y%m%d %H%M')).seconds)/60)<30
-                    #si va a cercare a partire da= 13:00 - minuti_di_diff
-                    data=datetime.strptime(_data+" 1300", '%Y%m%d %H%M')-td(minutes=diff)
-                    direzione=None
-                    
-            #altrimenti controlla se la data è vicina al range massimo diurno(13:00) di 30 minuti
-            elif abs(((data-datetime.strptime(_data+" 1300", '%Y%m%d %H%M')).seconds)/60)<30:
-                if(salto):
-                    break
-                else:
-                    passo=True
-                    salto=False
-                    diff=abs(((data-datetime.strptime(_data+" 1300", '%Y%m%d %H%M')).seconds)/60)<30
-                    #si va a cercare a partire da= 11:00 + minuti_di_diff
-                    data=datetime.strptime(_data+" 1100", '%Y%m%d %H%M')+td(minutes=diff)
-                    direzione=None
-                    
-                
-                
-                
-            #controlla se l'orario sta nel range massimo notturno(tra le 00:10 e le 02:00)
-            if datetime.strptime(_data+" 0010", '%Y%m%d %H%M') <= data <=datetime.strptime(_data+" 0200", '%Y%m%d %H%M'):
-                passo=True
-                salto=False
-                if res[3]=="sotto":
-                    data = data - td(minutes=10)
-                elif res[3]=="sopra":
-                    data = data + td(minutes=10)
-                    
-                elif res[3]=="destra":
-                    if(self.range_utile!=0):
-                        print "[consiglio]provare ad allargare il range possibile!"
-                    print "si prova a cercare all' orbita successiva"
-                    data = data + td(minutes=100)
-                    direzione=None
-                    salto=True
-                else:
-                    if(self.range_utile!=0):
-                        print "[consiglio]provare ad allargare il range possibile!"
-                    print "si prova a cercare all' orbita precedente"
-                    data = data - td(minutes=100)
-                    direzione=None
-                    salto=True
-            #altrimenti controlla se la data è vicina al range massimo diurno(00:10) di 30 minuti    
-            elif abs(((datetime.strptime(_data+" 0010", '%Y%m%d %H%M')-data).seconds)/60)<30:
-                if(salto):
-                    break
-                else:
-                    passo=True
-                    salto=False
-                    diff=abs(((data-datetime.strptime(_data+" 0010", '%Y%m%d %H%M')).seconds)/60)<30
-                    #si va a cercare a partire da= 02:00 - minuti_di_diff
-                    data=datetime.strptime(_data+" 0200", '%Y%m%d %H%M')-td(minutes=diff)
-                    direzione=None
-                    
-            #altrimenti controlla se la data è vicina al range massimo diurno(02:00) di 30 minuti    
-            elif abs(((data-datetime.strptime(_data+" 0200", '%Y%m%d %H%M')).seconds)/60)<30:
-                if(salto):
-                    break
-                else:
-                    passo=True
-                    salto=False
-                    diff=abs(((data-datetime.strptime(_data+" 0200", '%Y%m%d %H%M')).seconds)/60)<30
-                    #si va a cercare a partire da= 00:10 + minuti_di_diff
-                    data=datetime.strptime(_data+" 0010", '%Y%m%d %H%M')+td(minutes=diff)
-                    direzione=None
-                    
-            if(not passo):
-                break
-            orario=data.strftime("%H%M")[:3]
-            print "Si prova a cercarne un altro all'ora "+data.strftime("%H:%M")
+        print "########## ORARI TROVATI ##########"
+        orari_trovati=list(set(orari_trovati))
+        for i in orari_trovati:
+          print i  
+        print "tutti gli h5 buoni sono stati spostati nella cartella:\n",self.dir_finale_goodh5           
             
-            
-            
-            
-            
-            
-    
-        
-        
-            
-        
-        
-        
- 
-       
-
         
                     
                     
