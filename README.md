@@ -31,29 +31,29 @@ Others exchangeable parameters of EstrazioneH5 init in main.py:
 *	**rang(range)**: number between 0 and 1 (0<=rang<1) that specify from which index start take the request data and when it must stopped.***Remember that a big range may not let you find any good files, futhermore it's important set a small rang to prevent dirty H5 files!***. Recommended rang are = 0 (no range,take all the data),1/float(8) (very small range)
 
 *	**tip(Type of data)**: specify the data that it can be downloaded from the Suomi NPP.Select one of these in below:
-	-VIIRS-Day-Night-Band-SDR
-	-VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo
-	-VIIRS-Image-Bands-SDR-Ellipsoid-Geo
-	-VIIRS-Image-Band-SDR-Ellipsoid-Terrain-Corrected-Geo
-	-VIIRS-Imagery-Band-01-SDR
-	-VIIRS-Imagery-Band-02-SDR
-	-VIIRS-Imagery-Band-03-SDR
-	-VIIRS-Imagery-Band-04-SDR
-	-VIIRS-Imagery-Band-05-SDR
-	-VIIRS-Moderate-Bands-SDR-Geo
-	-VIIRS-Moderate-Bands-SDR-Terrian-Corrected-Geo
-	-VIIRS-Moderate-Resolution-Band-03-SDR
-	-VIIRS-Moderate-Resolution-Band-04-SDR
-	-VIIRS-Moderate-Resolution-Band-05-SDR
-	-VIIRS-Moderate-Resolution-Band-07-SDR
-	-VIIRS-Moderate-Resolution-Band-08-SDR
-	-VIIRS-Moderate-Resolution-Band-10-SDR
-	-VIIRS-Moderate-Resolution-Band-11-SDR
-	-VIIRS-Moderate-Resolution-Band-12-SDR
-	-VIIRS-Moderate-Resolution-Band-13-SDR
-	-VIIRS-Moderate-Resolution-Band-14-SDR
-	-VIIRS-Moderate-Resolution-Band-15-SDR
-	-VIIRS-Moderate-Resolution-Band-16-SDR
+	* VIIRS-Day-Night-Band-SDR
+	* VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo
+	* VIIRS-Image-Bands-SDR-Ellipsoid-Geo
+	* VIIRS-Image-Band-SDR-Ellipsoid-Terrain-Corrected-Geo
+	* VIIRS-Imagery-Band-01-SDR
+	* VIIRS-Imagery-Band-02-SDR
+	* VIIRS-Imagery-Band-03-SDR
+	* VIIRS-Imagery-Band-04-SDR
+    * VIIRS-Imagery-Band-05-SDR
+	* VIIRS-Moderate-Bands-SDR-Geo
+	* VIIRS-Moderate-Bands-SDR-Terrian-Corrected-Geo
+	* VIIRS-Moderate-Resolution-Band-03-SDR
+	* VIIRS-Moderate-Resolution-Band-04-SDR
+	* VIIRS-Moderate-Resolution-Band-05-SDR
+	* VIIRS-Moderate-Resolution-Band-07-SDR
+	* VIIRS-Moderate-Resolution-Band-08-SDR
+	* VIIRS-Moderate-Resolution-Band-10-SDR
+	* VIIRS-Moderate-Resolution-Band-11-SDR
+	* VIIRS-Moderate-Resolution-Band-12-SDR
+	* VIIRS-Moderate-Resolution-Band-13-SDR
+	* VIIRS-Moderate-Resolution-Band-14-SDR
+	* VIIRS-Moderate-Resolution-Band-15-SDR
+	* VIIRS-Moderate-Resolution-Band-16-SDR
 
 
 
