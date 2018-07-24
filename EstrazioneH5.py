@@ -27,7 +27,7 @@ class EstrazioneH5:
     h5_buoni=[]
     
     
-    def __init__(self,data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',dir_base="./",lat=37.755,lon=15,ip='ftp-npp.bou.class.noaa.gov'):
+    def __init__(self,data,rang=0,tip='VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo',dir_base="./",lat=37.755,lon=15,ip='ftp-npp.bou.class.noaa.gov',data_type):
         self.data_search=data
         self.ftp_ip=ip
         self.range_utile=rang
@@ -35,7 +35,10 @@ class EstrazioneH5:
         self.longitudine=lon
         self.tipologia_file=tip
         self.dir_base=dir_base
-        self.dir_ftp=data+'/VIIRS-SDR/'+tip+'/NPP/'
+        if(data_type=="SDR"):
+            self.dir_ftp=data+'/VIIRS-SDR/'+tip+'/NPP/'
+        else:
+            self.dir_ftp=data+'/VIIRSI-EDR/'+tip+'/NPP/'
         self.createDirs()
         self.connectFTP()
         self.downloadXMLs()

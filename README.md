@@ -30,7 +30,7 @@ There are 2 way that you can run main.py:
 Others exchangeable parameters of EstrazioneH5 init in main.py:
 *	**rang(range)**: number between 0 and 1 (0<=rang<1) that specify from which index start take the request data and when it must stopped.***Remember that a big range may not let you find any good files, futhermore it's important set a small rang to prevent dirty H5 files*** . Recommended rang are = 0 (no range,take all the data),1/float(8) (very small range)
 
-*	**tip(Type of data)**: specify the data that it can be downloaded from the Suomi NPP.Select one of these in below:
+*	**tip(Type of data)**: specify the SDR data that it can be downloaded from the Suomi NPP.Select one of these in below:
 	* VIIRS-Day-Night-Band-SDR
 	* VIIRS-Day-Night-Band-SDR-Ellipsoid-Geo
 	* VIIRS-Image-Bands-SDR-Ellipsoid-Geo
@@ -55,6 +55,13 @@ Others exchangeable parameters of EstrazioneH5 init in main.py:
 	* VIIRS-Moderate-Resolution-Band-15-SDR
 	* VIIRS-Moderate-Resolution-Band-16-SDR
 
+*	**tip(Type of data)**: specify the EDR data that it can be download
+    * VIIRS-Image-Band-EDR-GTM-Geo
+    * VIIRS-Imagery-Band-01-EDR
+    * VIIRS-Imagery-Band-02-EDR
+    * VIIRS-Imagery-Band-03-EDR
+    * VIIRS-Imagery-Band-04-EDR
+    * VIIRS-Imagery-Band-05-EDR
 
 
 
