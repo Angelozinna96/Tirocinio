@@ -1,6 +1,6 @@
 # Download H5 datasets from SUOMI NPP NASA Satellite about Etna
 This is an automatic H5 datasets downloader about Etna from an NASA polar-orbit satellite.
-It's write in Python 2.7 
+It's written in Python 2.7 
 
 ## SUOMI NPP Info
 The Suomi NPP is the first in a new generation of satellites intended to replace the Earth Observing System satellites, which were launched from 1997 to 2011. The satellite orbits the Earth about 14 times each day. Its five imaging systems include:
